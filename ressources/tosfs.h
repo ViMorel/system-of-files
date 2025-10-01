@@ -20,6 +20,9 @@
 #define TOSFS_ROOT_BLOCK 2
 #define TOSFS_MAX_NAME_LENGTH 32
 #define TOSFS_INODE_SIZE sizeof(struct tosfs_inode)
+#define IF_DIR 2
+#define IF_EXE 0
+#define IF_READ 1
 
 #define tosfs_set_bit(bitmap, block_no) bitmap|=(1<<block_no);
 

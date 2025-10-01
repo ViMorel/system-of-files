@@ -2,16 +2,49 @@
 
 #include <string.h>
 
-static struct stat getattr(char *file_path){
-    struct stat file_info;
-    stat(file_path, &file_info);
-    return file_info;
+void print_mode(__u16 mode, __u16 perms) {
+    char typechar = (mode == IF_DIR) ? 'd' : '-';
+    char permchar = (perms == 0) ? 'x' : ((perms == 1) ? 'r' : 'w');
+
+    printf("perms are : %c\n", permchar);
+    printf("mode is : %c\n", typechar);
 }
 
+void getattr(char *file_path){
+    int file_id = open(file_path, O_RDONLY);
+    struct attributes file_attributes;
+
+    off_t lenght = lseek(file_id, 0, SEEK_END);
+    void* map = mmap(NULL, lenght, PROT_READ, MAP_PRIVATE, file_id, 0);
+    struct tosfs_superblock *superblock = (struct tosfs_superblock *)map;
+    struct tosfs_inode *inode           = (struct tosfs_inode *)((char*)map + TOSFS_INODE_BLOCK * TOSFS_BLOCK_SIZE);
+    struct tosfs_dentry *dentry         = (struct tosfs_dentry *)((char*)map + TOSFS_ROOT_BLOCK * TOSFS_BLOCK_SIZE);
+
+    file_attributes.name          = file_path;
+    file_attributes.size          = lenght;
+    file_attributes.blocks        = superblock->blocks;
+    file_attributes.block_size    = superblock->block_size;
+    file_attributes.inode         = inode->inode;
+    file_attributes.file_type     = inode->mode;
+    file_attributes.perms         = inode->perm;
+    file_attributes.user_id       = inode->uid;
+    file_attributes.dentry_name   = ((char *)dentry->name);
+    printf("name          = %s\n", file_attributes.name);
+    printf("size          = %zu\n", file_attributes.size);
+    printf("blocks        = %u\n", file_attributes.blocks);
+    printf("block_size    = %u\n", file_attributes.block_size);
+    printf("inode         = %u\n", file_attributes.inode);
+    print_mode(file_attributes.file_type, file_attributes.perms);
+    printf("user_id       = %hu\n", file_attributes.user_id);
+    printf("dentrys_inode = %s\n", file_attributes.dentry_name);
+    
+    munmap(map, lenght);
+};
+/*
 int readdir(void *map, struct attributes *list, int max_entries) {
     struct tosfs_superblock *superblock = (struct tosfs_superblock *)map;
-    struct tosfs_inode *inode = (struct tosfs_inode *)((char*)map + TOSFS_INODE_BLOCK * TOSFS_BLOCK_SIZE);
-    struct tosfs_dentry *dentry = (struct tosfs_dentry *)((char*)map + TOSFS_ROOT_BLOCK * TOSFS_BLOCK_SIZE);
+    struct tosfs_inode *inode           = (struct tosfs_inode *)((char*)map + TOSFS_INODE_BLOCK * TOSFS_BLOCK_SIZE);
+    struct tosfs_dentry *dentry         = (struct tosfs_dentry *)((char*)map + TOSFS_ROOT_BLOCK * TOSFS_BLOCK_SIZE);
 
     int count = 0;
     for(int i = 0; i < superblock->inodes && count < max_entries; i++) {
@@ -23,25 +56,15 @@ int readdir(void *map, struct attributes *list, int max_entries) {
         count++;
     }
     return count;
-}
+};
 
 struct fuse_lowlevel_ops futosfs_ops = {
     .getattr = getattr,
     .readdir = readdir
-};
+};*/
 
 int main(){
-
-    // -----------------------Test the getattr function------------------------
-    
-    /*
-    struct stat info = getattr("ressources/test_tosfs_files");
-    printf("File size: %ld bytes\n", info.st_size);
-    printf("Number of links: %ld\n", info.st_nlink);
-    printf("File inode: %ld\n", info.st_ino);
-    printf("File permissions: %o\n", info.st_mode & 0777);
-    return 0;
-    */
+    getattr("ressources/test_tosfs_files");
     
     // -----------------------Test the readdir function------------------------
 
