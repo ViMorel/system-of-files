@@ -27,4 +27,4 @@ struct fuse_lowlevel_ops {
 
 void getattr(char *file_path);
 
-int readdir(void *map, struct attributes *list, int max_entries);
+void readdir(char *file_path);

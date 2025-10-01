@@ -1,5 +1,8 @@
 #include "futosfs.h"
-
+#include <stdio.h>
+#include <string.h>
+#include <pwd.h>
+#include <grp.h>
 #include <string.h>
 
 void print_mode(__u16 mode, __u16 perms) {
@@ -40,8 +43,8 @@ void getattr(char *file_path){
     
     munmap(map, lenght);
 };
-/*
-int readdir(void *map, struct attributes *list, int max_entries) {
+
+/*int readdir(void *map, struct attributes *list, int max_entries) {
     struct tosfs_superblock *superblock = (struct tosfs_superblock *)map;
     struct tosfs_inode *inode           = (struct tosfs_inode *)((char*)map + TOSFS_INODE_BLOCK * TOSFS_BLOCK_SIZE);
     struct tosfs_dentry *dentry         = (struct tosfs_dentry *)((char*)map + TOSFS_ROOT_BLOCK * TOSFS_BLOCK_SIZE);
@@ -56,15 +59,44 @@ int readdir(void *map, struct attributes *list, int max_entries) {
         count++;
     }
     return count;
+};*/
+
+void readdir(char *file_path) {
+    int file_id = open(file_path, O_RDONLY);
+    if (file_id < 0) { perror("open"); return; }
+
+    off_t lenght = lseek(file_id, 0, SEEK_END);
+    if (lenght <= 0) { perror("lseek"); close(file_id); return; }
+    printf("lenght is: %ld\n\r", lenght);
+    void* map = mmap(NULL, lenght, PROT_READ, MAP_PRIVATE, file_id, 0);
+    if (map == MAP_FAILED) { perror("mmap"); close(file_id); return; }
+    struct tosfs_superblock *superblock = (struct tosfs_superblock *)map;
+    struct tosfs_inode *inode           = (struct tosfs_inode *)((char*)map + TOSFS_INODE_BLOCK * TOSFS_BLOCK_SIZE);
+    struct tosfs_dentry *dentry         = (struct tosfs_dentry *)((char*)map + TOSFS_ROOT_BLOCK * TOSFS_BLOCK_SIZE);
+
+
+    struct passwd *pw = getpwuid(inode->uid);
+    struct group  *gr = getgrgid(inode->gid);
+
+    printf("%d %2u %s %s %6u %s\n",
+        inode->perm,
+        inode->nlink,
+        pw ? pw->pw_name : "?",
+        gr ? gr->gr_name : "?",
+        inode->size,
+        dentry->name
+    );
+    munmap(map, lenght);
 };
 
-struct fuse_lowlevel_ops futosfs_ops = {
+/*struct fuse_lowlevel_ops futosfs_ops = {
     .getattr = getattr,
     .readdir = readdir
 };*/
 
 int main(){
     getattr("ressources/test_tosfs_files");
+    readdir("ressources");
     
     // -----------------------Test the readdir function------------------------
 
